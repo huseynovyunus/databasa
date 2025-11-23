@@ -1,24 +1,39 @@
-// Bu, sadə bir test kodudur.
-// Əvvəlki kodunuzdakı "axios" və "puppeteer" kimi xarici modullardan istifadə etmir.
-// Məqsəd, Azure Function App mühitinin işlədiyini təsdiqləməkdir.
+// Sadəcə Storage bağlantısını yoxlayır
+
+const { BlobServiceClient } = require('@azure/storage-blob');
+
+const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING; 
+const CONTAINER_NAME = 'testcontainer'; 
 
 module.exports = async function (context, req) {
-    // URL-dən 'name' parametrini oxuyuruq, default olaraq 'Anonim' istifadə edirik
-    // Məsələn: /api/HttpTrigger?name=Yunus
-    const name = (req.query.name || (req.body && req.body.name));
+    context.log('Storage Connection Test Initiated.');
+    
+    if (!AZURE_STORAGE_CONNECTION_STRING) {
+        context.res = {
+            status: 500,
+            body: "XƏTA: AZURE_STORAGE_CONNECTION_STRING parametrlərdə tapılmadı. Zəhmət olmasa Configuration bölməsini yoxlayın."
+        };
+        return;
+    }
 
-    // Sadə mətn cavabı hazırlayırıq
-    const responseMessage = (name)
-        ? `Salam, ${name}! AZURE FUNCTION APP ƏSAS TESTİ UĞURLUDUR. Bu o deməkdir ki, əsas mühit düzgün konfiqurasiya edilib.`
-        : "Salam! AZURE FUNCTION APP ƏSAS TESTİ UĞURLUDUR. Lakin linkdə 'name' parametrini daxil etməmisiniz. (Məsələn: &name=Adınız)";
+    try {
+        // Blob Service-ə qoşulmağa cəhd edirik
+        const BLOB_SERVICE_CLIENT = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+        const containerClient = BLOB_SERVICE_CLIENT.getContainerClient(CONTAINER_NAME);
 
-    // Nəticəni 200 (OK) statusu ilə qaytarırıq
-    context.res = {
-        status: 200, 
-        headers: {
-            // Mətn cavabı göndəririk
-            "Content-Type": "text/plain"
-        },
-        body: responseMessage
-    };
+        // Sadəcə konteynerin mövcudluğunu yoxlayırıq
+        await containerClient.exists(); 
+
+        context.res = {
+            status: 200,
+            body: "UĞUR: Blob Storage Bağlantısı işləyir. İndi Puppeteer kodunu bərpa edə bilərik."
+        };
+
+    } catch (error) {
+        context.log.error('Storage Connection Error:', error);
+        context.res = {
+            status: 500,
+            body: `BAĞLANTI XƏTASI: Bağlantı sətirində problem var. Logları yoxlayın. Xəta: ${error.message}`
+        };
+    }
 };
