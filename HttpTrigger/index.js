@@ -1,6 +1,6 @@
 // Asılılıqları daxil edirik
 const axios = require('axios'); 
-const puppeteer = require('puppeteer'); 
+const puppeteer = require('C:\\home\\site\\wwwroot\\node_modules\\puppeteer'); // Azure Functions üçün puppeteer yolu dəyişdirilir
 // Express asılılıqları (express, cors, express-rate-limit) serversiz mühit üçün silinir.
 
 // Konfiqurasiya
@@ -36,7 +36,9 @@ const PLAN_ACCESS = {
 // 🛠️ KÖMƏKÇİ FUNTKİYALAR (Statik Məlumat Çıxarma)
 // ------------------------------------------------------------------
 
-// 1. Ümumi OEmbed Məlumat Çıxarma
+/**
+ * 1. Ümumi OEmbed Məlumat Çıxarma
+ */
 async function extractOembedData(url) {
     const oembedEndpoints = [
         `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
@@ -60,7 +62,9 @@ async function extractOembedData(url) {
     return null;
 }
 
-// 2. YouTube Məlumat Çıxarma
+/**
+ * 2. YouTube Məlumat Çıxarma
+ */
 async function extractYouTubeData(url) {
     const videoIdMatch = url.match(/(?:\?v=|\/embed\/|youtu\.be\/|\/v\/|\/vi\/|v=)([^#\&\?]*)/);
     const videoId = videoIdMatch && videoIdMatch[1];
@@ -87,7 +91,9 @@ async function extractYouTubeData(url) {
     }
 }
 
-// 3. TikTok Məlumat Çıxarma
+/**
+ * 3. TikTok Məlumat Çıxarma
+ */
 async function extractTikTokData(url) { 
     const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
     try {
@@ -104,7 +110,9 @@ async function extractTikTokData(url) {
     }
 }
 
-// 4. DailyMotion Məlumat Çıxarma
+/**
+ * 4. DailyMotion Məlumat Çıxarma
+ */
 async function extractDailyMotionData(url) {
     const oembedUrl = `https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(url)}`;
     try {
@@ -201,7 +209,7 @@ async function extractDeepData(url, plan = PRICING_PLANS.FREE.internal, context)
 
         const data = await page.evaluate((currentPlan) => {
             const output = {};
-            // ... (KÖÇÜRÜLMÜŞ `page.evaluate` MƏNTİQİ server.js-dən) ...
+            
             // 1. Əsas Meta Məlumatlar (Bütün planlar üçün)
             output.ogImage = document.querySelector('meta[property="og:image"]')?.content;
             output.ogTitle = document.querySelector('meta[property="og:title"]')?.content;
@@ -383,10 +391,9 @@ module.exports = async function (context, req) {
     context.log(`🔑 RapidAPI Girişi: ${user.email} (Daxili Plan: ${user.plan.toUpperCase()})`);
 
     // ----------------------------------------------------
-    // 2. REQUEST PARAMETRLƏRİNİ ALMAQ - KRİTİK DÜZƏLİŞ BURADA EDİLDİ!
+    // 2. REQUEST PARAMETRLƏRİNİ ALMAQ
     // ----------------------------------------------------
-    // RapidAPI-də təyin etdiyimiz "url-link" Query parametrini oxuyuruq.
-    // req.query.url-link-in işləməməsi ehtimalına qarşı [] notasiyası istifadə edilir.
+    // req.query['url-link'] formatında (RapidAPI üçün) və req.query.url (ümumi) yoxlanılır.
     const url = req.body?.url || req.query['url-link'] || req.query.url; 
     const planType = req.body?.planType || req.query.planType;
     
@@ -437,7 +444,7 @@ module.exports = async function (context, req) {
         let success = false;
         const extractionPlan = user.plan; 
 
-        // 1. Oembed yoxlaması
+        // 1. Oembed yoxlaması (YouTube, TikTok, DailyMotion)
         if (isYouTubeUrl) {
             data = await extractYouTubeData(url);
             isVideo = data.embedHtml !== null;
@@ -452,6 +459,7 @@ module.exports = async function (context, req) {
             success = data.thumbnail !== null;
         } 
         
+        // Oembed fallback
         if (!success || !data.embedHtml) { 
             const oembedResult = await extractOembedData(url);
             if (oembedResult && (oembedResult.thumbnail || oembedResult.embedHtml)) {
@@ -464,7 +472,7 @@ module.exports = async function (context, req) {
             }
         }
 
-        // 2. Puppeteer ilə dərin çıxarma
+        // 2. Puppeteer ilə dərin çıxarma (yalnız ödənişli planlar və ya OEmbed uğursuz olarsa)
         if (extractionPlan !== PRICING_PLANS.FREE.internal || !success) {
             context.log(`[API]: ${extractionPlan.toUpperCase()} planı üçün dərin çıxarma işə salınır...`);
             const deepResult = await extractDeepData(url, extractionPlan, context);
