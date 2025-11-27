@@ -19,6 +19,7 @@
   },
   "extensions": {
     "http": {
+      "routePrefix": "api",  // BU XƏTTİ ƏLAVƏ EDİN
       "maxConcurrentRequests": 100,
       "maxOutstandingRequests": 200,
       "dynamicThrottlingEnabled": true
