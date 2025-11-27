@@ -13,6 +13,6 @@
       "name": "res"
     }
   ],
-  "disabled": false
-  
+  "disabled": false,
+  "scriptFile": "index.js"
 }
